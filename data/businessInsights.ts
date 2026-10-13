@@ -1,157 +1,24 @@
-
-import { business, monthlyProfit } from "./businessData";
-
-import {
-  type Scenario,
-  calculateScenario,
-} from "./scenario";
-
+import { business, type BusinessData, getMonthlyProfit } from "./businessData";
+import { type Scenario, calculateScenario } from "./scenario";
 export type BusinessInsight = {
-  id: string;
-  title: string;
-  description: string;
+  id: string; title: string; description: string;
   category: "opportunity" | "risk" | "information";
   priority: "high" | "medium" | "low";
 };
-
-export function generateBusinessInsights(
-  scenario: Scenario
-): BusinessInsight[] {
-  const results = calculateScenario(scenario);
-  const insights: BusinessInsight[] = [];
-
-  const {
-    materialReduction,
-    energyReduction,
-    revenueIncrease,
-  } = scenario;
-
-  // Material costs
-  if (materialReduction > 0) {
-    insights.push({
-      id: "material-opportunity",
-      title: "Material Cost Optimization",
-      description:
-        `The scenario assumes a ${materialReduction}% reduction ` +
-        "in material expenses. Investigate supplier negotiations, " +
-        "waste reduction, and purchasing efficiency to evaluate " +
-        "whether this target is achievable.",
-      category: "opportunity",
-      priority: "high",
-    });
-  } else if (materialReduction < 0) {
-    insights.push({
-      id: "material-risk",
-      title: "Material Cost Pressure",
-      description:
-        `Material expenses increase by ${Math.abs(materialReduction)}% ` +
-        "under this scenario. Review supplier concentration, " +
-        "procurement contracts, and input-price exposure.",
-      category: "risk",
-      priority: "high",
-    });
-  }
-
-  // Energy costs
-  if (energyReduction > 0) {
-    insights.push({
-      id: "energy-opportunity",
-      title: "Energy Efficiency Opportunity",
-      description:
-        `The scenario assumes ${energyReduction}% lower energy costs. ` +
-        "Potential initiatives include equipment efficiency reviews, " +
-        "load management, and improved energy monitoring.",
-      category: "opportunity",
-      priority: "medium",
-    });
-  } else if (energyReduction < 0) {
-    insights.push({
-      id: "energy-risk",
-      title: "Energy Cost Exposure",
-      description:
-        `Energy expenses rise by ${Math.abs(energyReduction)}% ` +
-        "in this scenario. Investigate energy-price exposure, " +
-        "contract conditions, and operational consumption.",
-      category: "risk",
-      priority: "medium",
-    });
-  }
-
-  // Revenue
-  if (revenueIncrease > 0) {
-    insights.push({
-      id: "revenue-growth",
-      title: "Revenue Growth Assumption",
-      description:
-        `The model assumes ${revenueIncrease}% higher revenue. ` +
-        "Validate demand, available production capacity, " +
-        "and any additional variable costs before using " +
-        "the result for business planning.",
-      category: "opportunity",
-      priority: "high",
-    });
-  } else if (revenueIncrease < 0) {
-    insights.push({
-      id: "revenue-risk",
-      title: "Revenue Decline Risk",
-      description:
-        `The scenario assumes a ${Math.abs(revenueIncrease)}% ` +
-        "revenue decline. Investigate demand sensitivity, " +
-        "fixed-cost coverage, and possible operational responses.",
-      category: "risk",
-      priority: "high",
-    });
-  }
-
-  // Overall profitability
-  if (results.newProfit < 0) {
-    insights.push({
-      id: "negative-profit",
-      title: "Operating Loss Scenario",
-      description:
-        "Simulated operating expenses exceed revenue. " +
-        "Review cost structure, cash requirements, and " +
-        "the assumptions driving the modeled loss.",
-      category: "risk",
-      priority: "high",
-    });
-  } else if (results.newProfit < monthlyProfit) {
-    insights.push({
-      id: "profit-decline",
-      title: "Profitability Under Pressure",
-      description:
-        "Simulated monthly profit is below the baseline. " +
-        "Compare the individual cost and revenue drivers " +
-        "to understand the modeled decline.",
-      category: "risk",
-      priority: "medium",
-    });
-  } else if (results.newProfit > monthlyProfit) {
-    insights.push({
-      id: "profit-improvement",
-      title: "Potential Profit Improvement",
-      description:
-        "The selected assumptions generate a higher " +
-        "monthly operating profit than the baseline. " +
-        "Validate feasibility and implementation costs " +
-        "before treating this as an achievable target.",
-      category: "opportunity",
-      priority: "medium",
-    });
-  }
-
-  if (insights.length === 0) {
-    insights.push({
-      id: "baseline",
-      title: "Baseline Scenario",
-      description:
-        "No changes have been applied. Adjust material " +
-        "costs, energy costs, or revenue to explore " +
-        "different business scenarios.",
-      category: "information",
-      priority: "low",
-    });
-  }
-
-  return insights;
+export function generateBusinessInsights(s: Scenario, data: BusinessData = business): BusinessInsight[] {
+  const result = calculateScenario(s, data);
+  const items: BusinessInsight[] = [];
+  const add = (id: string, title: string, description: string, category: BusinessInsight["category"], priority: BusinessInsight["priority"]) =>
+    items.push({ id, title, description, category, priority });
+  if (s.materialReduction > 0) add("material-opportunity", "Material Cost Optimization", `A ${s.materialReduction}% material cost reduction is assumed. Investigate suppliers, waste and procurement efficiency.`, "opportunity", "high");
+  if (s.materialReduction < 0) add("material-risk", "Material Cost Pressure", `Material costs increase by ${Math.abs(s.materialReduction)}%. Review procurement and supply risks.`, "risk", "high");
+  if (s.energyReduction > 0) add("energy-opportunity", "Energy Efficiency Opportunity", `A ${s.energyReduction}% energy cost reduction is assumed. Assess consumption and equipment efficiency.`, "opportunity", "medium");
+  if (s.energyReduction < 0) add("energy-risk", "Energy Cost Exposure", `Energy expenses increase by ${Math.abs(s.energyReduction)}%. Examine contracts and consumption.`, "risk", "medium");
+  if (s.revenueIncrease > 0) add("revenue-growth", "Revenue Growth Assumption", `Revenue increases by ${s.revenueIncrease}% in this scenario. Validate demand, capacity and variable costs.`, "opportunity", "high");
+  if (s.revenueIncrease < 0) add("revenue-risk", "Revenue Decline Risk", `Revenue falls by ${Math.abs(s.revenueIncrease)}%. Assess fixed-cost coverage and demand sensitivity.`, "risk", "high");
+  if (result.newProfit < 0) add("negative-profit", "Operating Loss Scenario", "Simulated costs exceed revenue. Review cost structure and assumptions.", "risk", "high");
+  else if (result.newProfit < getMonthlyProfit(data)) add("profit-decline", "Profitability Under Pressure", "Simulated profit is below baseline. Identify the drivers behind the decline.", "risk", "medium");
+  else if (result.newProfit > getMonthlyProfit(data)) add("profit-improvement", "Potential Profit Improvement", "The scenario increases operating profit. Validate implementation costs and feasibility.", "opportunity", "medium");
+  if (!items.length) add("baseline", "Baseline Scenario", "No changes applied. Adjust assumptions to evaluate alternative outcomes.", "information", "low");
+  return items;
 }
